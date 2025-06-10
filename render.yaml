@@ -1,11 +1,13 @@
 services:
+services:
   - type: web
-    name: checkmate-rebuild
+    name: checkmate3
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    buildCommand: |
+      pip install -r requirements.txt
+      python preprocess_pipeline.py
+    startCommand: gunicorn app:app
     envVars:
-      - key: OPENAI_API_KEY
-        sync: false
-    autoDeploy: true
-    region: frankfurt
+      - key: PYTHONUNBUFFERED
+        value: "true"
+    plan: free
