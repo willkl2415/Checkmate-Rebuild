@@ -7,28 +7,32 @@
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <div id="app">
-    <div id="sidebar">
-      <img src="/static/checkmate.png" alt="Checkmate Logo" />
-      <p>Your Defence Document Intelligence Assistant</p>
+  <div class="container">
+    <div class="left-panel">
+      <img src="/static/checkmate.png" alt="Checkmate Logo" class="logo" />
+      <p class="slogan">Your Defence Document Intelligence Assistant</p>
+
       <div class="filters">
-        <label>Filter by Document:</label>
+        <label for="documentFilter">Filter by Document:</label>
         <select id="documentFilter"></select>
 
-        <label>Filter by Section:</label>
+        <label for="sectionFilter">Filter by Section:</label>
         <select id="sectionFilter"></select>
 
         <label><input type="checkbox" id="includeSubsections" /> Include Subsections</label>
       </div>
     </div>
-    <div id="main">
+
+    <div class="right-panel">
       <h1>Check-Mate</h1>
+
       <form id="queryForm">
         <input type="text" id="queryInput" placeholder="Ask your question..." />
         <button type="submit">Submit</button>
       </form>
+
       <div id="results"></div>
-      <p id="instruction">Use the document filter to view all matches.</p>
+      <p class="footer">Use the document filter to view all matches.</p>
     </div>
   </div>
 
@@ -92,4 +96,14 @@
     document.getElementById("queryForm").addEventListener("submit", function (e) {
       e.preventDefault();
       const query = document.getElementById("queryInput").value;
-      const docFi
+      const docFilter = document.getElementById("documentFilter").value;
+      const secFilter = document.getElementById("sectionFilter").value;
+      const includeSubsections = document.getElementById("includeSubsections").checked;
+
+      runQuery(query, docFilter, secFilter, includeSubsections);
+    });
+
+    fetchFilters();
+  </script>
+</body>
+</html>
