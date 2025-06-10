@@ -22,31 +22,40 @@ def get_priority(doc_title):
     else:
         return 5
 
-# Filter and search logic
+# Filter and search logic with diagnostics
 def filter_chunks(question, selected_doc, refine_query):
     if not question:
+        print("No question provided.")
         return []
 
     results = []
-    question = question.lower().strip()
-    refine_query = refine_query.lower().strip() if refine_query else ""
+    question_pattern = re.compile(rf"\b{re.escape(question.strip())}\b", re.IGNORECASE)
+    refine_pattern = re.compile(rf"\b{re.escape(refine_query.strip())}\b", re.IGNORECASE) if refine_query else None
 
-    for chunk in chunks:
-        content = chunk.get("text", "").lower()
+    print(f"\n--- SEARCH DEBUG ---")
+    print(f"Question: {question}")
+    print(f"Selected Document: {selected_doc}")
+    print(f"Refine Query: {refine_query}\n")
+
+    for i, chunk in enumerate(chunks):
+        content = chunk.get("text", "")
         doc_title = chunk.get("document_title", "")
         section = chunk.get("section", "")
 
-        if question in content:
-            if selected_doc and doc_title != selected_doc:
-                continue
-            if refine_query and refine_query not in content:
-                continue
+        match_q = question_pattern.search(content)
+        match_r = refine_pattern.search(content) if refine_pattern else True
+        match_d = (doc_title == selected_doc) if selected_doc else True
 
+        if match_q and match_r and match_d:
+            print(f"✓ Match #{len(results) + 1}: {doc_title} — {section}")
             results.append({
                 "document": doc_title,
                 "section": section,
-                "content": chunk.get("text", "")
+                "content": content
             })
+
+    if not results:
+        print("⚠️ No matches found.")
 
     results.sort(key=lambda x: get_priority(x["document"]))
     return results
