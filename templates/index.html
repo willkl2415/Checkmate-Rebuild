@@ -10,7 +10,7 @@
             let timeout = null;
             refineInput.addEventListener("input", () => {
                 clearTimeout(timeout);
-                timeout = setTimeout(() => refineInput.form.submit(), 600);  // Delay auto-submit
+                timeout = setTimeout(() => refineInput.form.submit(), 600);
             });
 
             const docSelect = document.querySelector("select[name='document']");
@@ -34,8 +34,8 @@
 
     <div class="right-panel">
         <div class="copyright-message">
-    &copy; 2025 William Kennedy-Long. All rights reserved.
-    </div>
+        &copy; 2025 William Kennedy-Long. All rights reserved.
+        </div>
         <form method="post">
             <input type="text" name="question" placeholder="Type your question..." value="{{ question }}" />
             <select name="document">
@@ -65,6 +65,3 @@
 </div>
 </body>
 </html>
-<header class="copyright-header">
-    &copy; 2025 William Kennedy-Long. All rights reserved.
-</header>
