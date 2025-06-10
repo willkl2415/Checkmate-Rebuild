@@ -3,10 +3,11 @@ from flask import Flask, request, render_template
 
 app = Flask(__name__)
 
-# Load chunks
+# Load chunks from file
 with open("chunks.json", "r", encoding="utf-8") as f:
     chunks = json.load(f)
 
+# Define priority order
 def get_priority(doc_title):
     title = doc_title.lower()
     if "jsp 822" in title:
@@ -20,14 +21,11 @@ def get_priority(doc_title):
     else:
         return 5
 
+# Filter and search logic with independent matching
 def filter_chunks(question, selected_doc, refine_query):
-    if not question:
-        print("No question provided.")
-        return []
-
     results = []
-    q = question.lower()
-    r = refine_query.lower() if refine_query else ""
+    q = question.lower().strip() if question else ""
+    r = refine_query.lower().strip() if refine_query else ""
 
     print(f"\n--- SEARCH DEBUG ---")
     print(f"Question: {question}")
@@ -39,12 +37,11 @@ def filter_chunks(question, selected_doc, refine_query):
         doc_title = chunk.get("document_title", "")
         section = chunk.get("section", "")
 
-        if q in content:
-            if selected_doc and doc_title != selected_doc:
-                continue
-            if r and r not in content:
-                continue
+        match_q = q in content if q else True
+        match_r = r in content if r else True
+        match_d = doc_title == selected_doc if selected_doc else True
 
+        if match_q and match_r and match_d:
             print(f"✓ Match: {doc_title} — {section}")
             results.append({
                 "document": doc_title,
@@ -54,6 +51,7 @@ def filter_chunks(question, selected_doc, refine_query):
 
     if not results:
         print("⚠️ No matches found.")
+
     results.sort(key=lambda x: get_priority(x["document"]))
     return results
 
