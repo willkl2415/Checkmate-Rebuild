@@ -1,5 +1,4 @@
 import json
-import re
 from flask import Flask, request, render_template
 
 app = Flask(__name__)
@@ -22,41 +21,41 @@ def get_priority(doc_title):
     else:
         return 5
 
-# Filter and search logic with diagnostics
+# Simplified loose match filter
 def filter_chunks(question, selected_doc, refine_query):
     if not question:
         print("No question provided.")
         return []
 
     results = []
-    question_pattern = re.compile(rf"\b{re.escape(question.strip())}\b", re.IGNORECASE)
-    refine_pattern = re.compile(rf"\b{re.escape(refine_query.strip())}\b", re.IGNORECASE) if refine_query else None
+    q = question.lower()
+    r = refine_query.lower() if refine_query else ""
 
     print(f"\n--- SEARCH DEBUG ---")
     print(f"Question: {question}")
     print(f"Selected Document: {selected_doc}")
     print(f"Refine Query: {refine_query}\n")
 
-    for i, chunk in enumerate(chunks):
-        content = chunk.get("text", "")
+    for chunk in chunks:
+        content = chunk.get("text", "").lower()
         doc_title = chunk.get("document_title", "")
         section = chunk.get("section", "")
 
-        match_q = question_pattern.search(content)
-        match_r = refine_pattern.search(content) if refine_pattern else True
-        match_d = (doc_title == selected_doc) if selected_doc else True
+        if q in content:
+            if selected_doc and doc_title != selected_doc:
+                continue
+            if r and r not in content:
+                continue
 
-        if match_q and match_r and match_d:
-            print(f"✓ Match #{len(results) + 1}: {doc_title} — {section}")
+            print(f"✓ Match: {doc_title} — {section}")
             results.append({
                 "document": doc_title,
                 "section": section,
-                "content": content
+                "content": chunk.get("text", "")
             })
 
     if not results:
         print("⚠️ No matches found.")
-
     results.sort(key=lambda x: get_priority(x["document"]))
     return results
 
