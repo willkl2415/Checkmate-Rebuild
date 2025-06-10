@@ -28,16 +28,18 @@ def filter_chunks(question, selected_doc, refine_query):
         return []
 
     results = []
+    question = question.lower().strip()
+    refine_query = refine_query.lower().strip() if refine_query else ""
 
     for chunk in chunks:
         content = chunk.get("text", "").lower()
         doc_title = chunk.get("document_title", "")
         section = chunk.get("section", "")
 
-        if question.lower() in content:
+        if question in content:
             if selected_doc and doc_title != selected_doc:
                 continue
-            if refine_query and refine_query.lower() not in content:
+            if refine_query and refine_query not in content:
                 continue
 
             results.append({
