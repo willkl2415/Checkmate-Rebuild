@@ -1,58 +1,83 @@
-from flask import Flask, request, render_template
+import os
 import json
 import logging
+from flask import Flask, render_template, request
 from answer_engine import semantic_search
 
 app = Flask(__name__)
+
+# Load chunks.json
+with open("data/chunks.json", "r", encoding="utf-8") as f:
+    chunks = json.load(f)
+
+# Extract document list from chunks
+documents = sorted(list(set(chunk.get("document", "") for chunk in chunks if "document" in chunk)))
+
+# Enable logging
 logging.basicConfig(level=logging.DEBUG)
-
-try:
-    with open("data/chunks.json", "r", encoding="utf-8") as f:
-        chunks = json.load(f)
-    logging.debug(f"✅ Loaded {len(chunks)} chunks.")
-except Exception as e:
-    logging.error(f"❌ Failed to load chunks.json: {e}")
-    chunks = []
-
-documents = ["All Documents"] + sorted(set(c["document"] for c in chunks if "document" in c))
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     question = ""
-    selected_doc = "All Documents"
+    selected_doc = ""
     refine_query = ""
+    semantic_mode = False
     answer = []
-    use_semantic = False
 
     if request.method == "POST":
         if request.form.get("clear"):
-            return render_template("index.html", answer=[], question="", documents=documents,
-                                   selected_doc="All Documents", refine_query="", use_semantic=False)
+            return render_template(
+                "index.html",
+                answer=[],
+                question="",
+                documents=["All Documents"] + documents,
+                selected_doc="All Documents",
+                refine_query="",
+                semantic_mode=False
+            )
 
         question = request.form.get("question", "").strip()
-        selected_doc = request.form.get("document", "All Documents").strip()
+        selected_doc = request.form.get("document", "All Documents")
         refine_query = request.form.get("refine_query", "").strip()
-        use_semantic = bool(request.form.get("semantic"))
+        semantic_mode = bool(request.form.get("semantic"))
 
         logging.debug("--- SEARCH DEBUG ---")
         logging.debug(f"Question: {question}")
         logging.debug(f"Selected Document: {selected_doc}")
         logging.debug(f"Refine Query: {refine_query}")
-        logging.debug(f"Semantic Mode: {use_semantic}")
+        logging.debug(f"Semantic Mode: {semantic_mode}")
 
-        filtered = [c for c in chunks if
-                    (selected_doc == "All Documents" or c["document"] == selected_doc) and
-                    (not refine_query or refine_query.lower() in c["content"].lower())]
+        # Filter chunks
+        filtered = [chunk for chunk in chunks if
+                    (selected_doc == "All Documents" or chunk.get("document") == selected_doc) and
+                    (not refine_query or refine_query.lower() in chunk.get("text", "").lower())]
 
-        if use_semantic:
+        if semantic_mode:
             answer = semantic_search(question, filtered, selected_doc, refine_query)
-            logging.debug(f"Semantic search returned {len(answer)} results.")
         else:
-            answer = [c for c in filtered if question.lower() in c["content"].lower()]
+            q = question.lower()
+            answer = [chunk for chunk in filtered if q in chunk.get("text", "").lower()]
             logging.debug(f"Token search found {len(answer)} matches.")
 
-    return render_template("index.html", answer=answer, question=question, documents=documents,
-                           selected_doc=selected_doc, refine_query=refine_query, use_semantic=use_semantic)
+        return render_template(
+            "index.html",
+            answer=answer,
+            question=question,
+            documents=["All Documents"] + documents,
+            selected_doc=selected_doc,
+            refine_query=refine_query,
+            semantic_mode=semantic_mode
+        )
+
+    return render_template(
+        "index.html",
+        answer=[],
+        question="",
+        documents=["All Documents"] + documents,
+        selected_doc="All Documents",
+        refine_query="",
+        semantic_mode=False
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)
