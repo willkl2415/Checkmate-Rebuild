@@ -67,7 +67,7 @@ def index():
 
         if semantic_mode:
             logging.debug(f"Semantic search started for: {question}")
-            answer = semantic_search(question, filtered)
+            answer = semantic_search(question, filtered, selected_doc, refine_query)
         else:
             q = question.lower()
             answer = [c for c in filtered if q in c.get("text", "").lower()]
