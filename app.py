@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 
-with open("chunks.json", "r", encoding="utf-8") as f:
+with open("data/chunks.json", "r", encoding="utf-8") as f:
     chunks = json.load(f)
 
 def get_priority(doc_title):
