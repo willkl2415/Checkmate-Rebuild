@@ -1,49 +1,47 @@
 import json
+from sentence_transformers import SentenceTransformer, util
 import torch
 import logging
-from sentence_transformers import SentenceTransformer, util
 
 # Enable debug logs
 logging.basicConfig(level=logging.DEBUG)
 
-# Load model
+# Load model from Hugging Face
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
-# Global store for chunks with embeddings
-CHUNKS_WITH_EMBEDDINGS = []
+def classify_intent(question):
+    q = question.lower()
+    if q.startswith("what"):
+        return "what"
+    elif q.startswith("how"):
+        return "how"
+    elif q.startswith("why"):
+        return "why"
+    return "general"
 
-def encode_chunks(chunks):
-    """Precompute and store chunk embeddings at startup."""
-    logging.debug("Encoding all document chunks...")
-    for chunk in chunks:
-        text = chunk.get("text", "")
-        embedding = model.encode(text, convert_to_tensor=True)
-        CHUNKS_WITH_EMBEDDINGS.append({
-            "document": chunk.get("document_title", ""),
-            "section": chunk.get("section", ""),
-            "text": text,
-            "embedding": embedding
-        })
-    logging.debug(f"Encoded {len(CHUNKS_WITH_EMBEDDINGS)} chunks.")
-
-def semantic_search(question, selected_doc, refine_query):
-    """Perform semantic search using precomputed chunk embeddings."""
+def semantic_search(question, chunks, selected_doc, refine_query):
     logging.debug(f"Semantic search started for: {question}")
     query_embedding = model.encode(question, convert_to_tensor=True)
     matches = []
 
-    for entry in CHUNKS_WITH_EMBEDDINGS:
-        if selected_doc and selected_doc != "All Documents" and entry["document"] != selected_doc:
+    for chunk in chunks:
+        content = chunk.get("text", "")
+        doc_title = chunk.get("document_title", "")
+        section = chunk.get("section", "")
+
+        if selected_doc and selected_doc != "All Documents" and doc_title != selected_doc:
             continue
-        if refine_query and refine_query.lower() not in entry["text"].lower():
+        if refine_query and refine_query.lower() not in content.lower():
             continue
 
-        score = util.pytorch_cos_sim(query_embedding, entry["embedding"]).item()
+        chunk_embedding = model.encode(content, convert_to_tensor=True)
+        score = util.pytorch_cos_sim(query_embedding, chunk_embedding).item()
+
         if score > 0.45:
             matches.append({
-                "document": entry["document"],
-                "section": entry["section"],
-                "content": entry["text"],
+                "document": doc_title,
+                "section": section,
+                "content": content,
                 "score": round(score, 3),
                 "reason": f"Semantic match with score {round(score, 3)}"
             })
