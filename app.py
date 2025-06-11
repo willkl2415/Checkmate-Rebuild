@@ -18,7 +18,7 @@ except Exception as e:
     chunks = []
 
 # Extract documents
-documents = sorted(set(c.get("document_title", "") for c in chunks if "document_title" in c))
+documents = sorted(set(c["document_title"] for c in chunks if "document_title" in c))
 logging.debug(f"✅ Found {len(documents)} unique documents: {documents}")
 
 @app.route("/", methods=["GET", "POST"])
