@@ -3,11 +3,11 @@ from flask import Flask, request, render_template
 
 app = Flask(__name__)
 
-# Load chunks from file
-with open("chunks.json", "r", encoding="utf-8") as f:
+# Load chunks
+with open("data/chunks.json", "r", encoding="utf-8") as f:
     chunks = json.load(f)
 
-# Define priority order
+# Priority order
 def get_priority(doc_title):
     title = doc_title.lower()
     if "jsp 822" in title:
@@ -21,7 +21,7 @@ def get_priority(doc_title):
     else:
         return 5
 
-# Filter and search logic with independent matching
+# Search function
 def filter_chunks(question, selected_doc, refine_query):
     results = []
     q = question.lower().strip() if question else ""
