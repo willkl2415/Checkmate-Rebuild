@@ -43,6 +43,7 @@
                 {% endfor %}
             </select>
             <input type="text" name="refine_query" placeholder="Refine your search..." value="{{ refine_query }}" />
+            <label><input type="checkbox" name="semantic_toggle" {% if use_semantic %}checked{% endif %}/> Use Semantic Matching</label>
             <button type="submit" class="green-button"><strong>Ask Check-Mate</strong></button>
             <button type="submit" name="clear" value="1" class="red-button"><strong>Clear Search</strong></button>
         </form>
@@ -53,7 +54,9 @@
             {% for chunk in answer %}
             <li>
                 <strong>{{ chunk.document }}</strong> — {{ chunk.section }}<br/>
-                {{ chunk.content }}
+                <p>{{ chunk.content }}</p>
+                {% if chunk.score %}<p><strong>Score:</strong> {{ chunk.score }}</p>{% endif %}
+                {% if chunk.reason %}<p><strong>Reason:</strong> {{ chunk.reason }}</p>{% endif %}
             </li>
             {% endfor %}
         </ul>
