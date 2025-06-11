@@ -8,7 +8,6 @@ app = Flask(__name__)
 with open("data/chunks.json", "r", encoding="utf-8") as f:
     chunks = json.load(f)
 
-# Priority sort
 def get_priority(doc_title):
     title = doc_title.lower()
     if "jsp 822" in title:
@@ -22,7 +21,6 @@ def get_priority(doc_title):
     else:
         return 5
 
-# Token-based search
 def token_match(question, selected_doc, refine_query):
     results = []
     q = question.lower().strip() if question else ""
@@ -60,6 +58,16 @@ def index():
     documents = sorted(set(chunk["document_title"] for chunk in chunks if "document_title" in chunk))
 
     if request.method == "POST":
+        if request.form.get("clear"):
+            return render_template("index.html",
+                question="",
+                selected_doc="",
+                refine_query="",
+                documents=documents,
+                answer=[],
+                use_semantic=False
+            )
+
         question = request.form.get("question", "")
         selected_doc = request.form.get("document", "")
         refine_query = request.form.get("refine_query", "")
