@@ -3,17 +3,16 @@ import json
 import logging
 from flask import Flask, render_template, request
 from answer_engine import semantic_search
+from utils import load_chunks, load_documents
 
 app = Flask(__name__)
 
-# Load chunks.json
-with open("data/chunks.json", "r", encoding="utf-8") as f:
-    chunks = json.load(f)
+# Load chunks and document titles
+CHUNKS_PATH = os.path.join("data", "chunks.json")
+chunks = load_chunks(CHUNKS_PATH)
+documents = load_documents(chunks)
 
-# Extract document list from chunks
-documents = sorted(list(set(chunk.get("document", "") for chunk in chunks if "document" in chunk)))
-
-# Enable logging
+# Enable logging for debug
 logging.basicConfig(level=logging.DEBUG)
 
 @app.route("/", methods=["GET", "POST"])
@@ -37,9 +36,20 @@ def index():
             )
 
         question = request.form.get("question", "").strip()
-        selected_doc = request.form.get("document", "All Documents")
+        selected_doc = request.form.get("document", "")
         refine_query = request.form.get("refine_query", "").strip()
-        semantic_mode = bool(request.form.get("semantic"))
+        semantic_mode = True if request.form.get("semantic") == "on" else False
+
+        if not question:
+            return render_template(
+                "index.html",
+                answer=[],
+                question=question,
+                documents=["All Documents"] + documents,
+                selected_doc=selected_doc or "All Documents",
+                refine_query=refine_query,
+                semantic_mode=semantic_mode
+            )
 
         logging.debug("--- SEARCH DEBUG ---")
         logging.debug(f"Question: {question}")
@@ -47,16 +57,28 @@ def index():
         logging.debug(f"Refine Query: {refine_query}")
         logging.debug(f"Semantic Mode: {semantic_mode}")
 
-        # Filter chunks
-        filtered = [chunk for chunk in chunks if
-                    (selected_doc == "All Documents" or chunk.get("document") == selected_doc) and
-                    (not refine_query or refine_query.lower() in chunk.get("text", "").lower())]
-
         if semantic_mode:
-            answer = semantic_search(question, filtered, selected_doc, refine_query)
+            answer = semantic_search(
+                question,
+                selected_doc if selected_doc != "All Documents" else "",
+                refine_query
+            )
         else:
+            # Token search fallback
+            answer = []
             q = question.lower()
-            answer = [chunk for chunk in filtered if q in chunk.get("text", "").lower()]
+            for chunk in chunks:
+                if selected_doc and selected_doc != "All Documents" and chunk["document_title"] != selected_doc:
+                    continue
+                if refine_query and refine_query.lower() not in chunk["text"].lower():
+                    continue
+                if q in chunk["text"].lower():
+                    answer.append({
+                        "document": chunk["document_title"],
+                        "section": chunk["section"],
+                        "content": chunk["text"]
+                    })
+
             logging.debug(f"Token search found {len(answer)} matches.")
 
         return render_template(
