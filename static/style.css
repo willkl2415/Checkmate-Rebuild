@@ -22,9 +22,11 @@ body {
 
 .right-panel {
     width: 78%;
+    background-color: #f3f3f3;
     padding: 40px;
     overflow-y: auto;
-}
+ }
+
 
 .logo {
     max-height: 300px;
