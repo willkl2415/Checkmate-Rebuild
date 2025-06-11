@@ -1,5 +1,6 @@
 import json
 from flask import Flask, request, render_template
+from answer_engine import semantic_search
 
 app = Flask(__name__)
 
@@ -7,7 +8,7 @@ app = Flask(__name__)
 with open("data/chunks.json", "r", encoding="utf-8") as f:
     chunks = json.load(f)
 
-# Priority order
+# Priority sort
 def get_priority(doc_title):
     title = doc_title.lower()
     if "jsp 822" in title:
@@ -21,16 +22,11 @@ def get_priority(doc_title):
     else:
         return 5
 
-# Search function
-def filter_chunks(question, selected_doc, refine_query):
+# Token-based search
+def token_match(question, selected_doc, refine_query):
     results = []
     q = question.lower().strip() if question else ""
     r = refine_query.lower().strip() if refine_query else ""
-
-    print(f"\n--- SEARCH DEBUG ---")
-    print(f"Question: {question}")
-    print(f"Selected Document: {selected_doc}")
-    print(f"Refine Query: {refine_query}\n")
 
     for chunk in chunks:
         content = chunk.get("text", "").lower()
@@ -42,15 +38,13 @@ def filter_chunks(question, selected_doc, refine_query):
         match_d = doc_title == selected_doc if selected_doc else True
 
         if match_q and match_r and match_d:
-            print(f"✓ Match: {doc_title} — {section}")
             results.append({
                 "document": doc_title,
                 "section": section,
-                "content": chunk.get("text", "")
+                "content": chunk.get("text", ""),
+                "score": "n/a",
+                "reason": "token match"
             })
-
-    if not results:
-        print("⚠️ No matches found.")
 
     results.sort(key=lambda x: get_priority(x["document"]))
     return results
@@ -61,6 +55,7 @@ def index():
     selected_doc = ""
     refine_query = ""
     answer = []
+    use_semantic = False
 
     documents = sorted(set(chunk["document_title"] for chunk in chunks if "document_title" in chunk))
 
@@ -68,9 +63,22 @@ def index():
         question = request.form.get("question", "")
         selected_doc = request.form.get("document", "")
         refine_query = request.form.get("refine_query", "")
-        answer = filter_chunks(question, selected_doc, refine_query)
+        use_semantic = request.form.get("semantic_toggle") == "on"
 
-    return render_template("index.html", question=question, selected_doc=selected_doc, refine_query=refine_query, documents=documents, answer=answer)
+        if use_semantic:
+            filtered_chunks = [c for c in chunks if (not selected_doc or c["document_title"] == selected_doc)]
+            answer = semantic_search(filtered_chunks, question)
+        else:
+            answer = token_match(question, selected_doc, refine_query)
+
+    return render_template("index.html",
+        question=question,
+        selected_doc=selected_doc,
+        refine_query=refine_query,
+        documents=documents,
+        answer=answer,
+        use_semantic=use_semantic
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)
