@@ -64,7 +64,7 @@ def index():
         ]
 
         if semantic_mode:
-            answer = semantic_search(question, filtered_chunks, refine_query)
+            answer = semantic_search(question, filtered_chunks, selected_doc, refine_query)
         else:
             q = question.lower()
             answer = [
