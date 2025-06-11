@@ -1,42 +1,51 @@
 import json
-import numpy as np
 from sentence_transformers import SentenceTransformer, util
-from sklearn.feature_extraction.text import CountVectorizer
+import torch
+import logging
 
-# Correct model load for Render
+# Enable debug logs
+logging.basicConfig(level=logging.DEBUG)
+
+# Load model from Hugging Face directly
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 def classify_intent(question):
     q = question.lower()
     if q.startswith("what"):
         return "what"
-    elif q.startswith("why"):
-        return "why"
     elif q.startswith("how"):
         return "how"
-    return "other"
+    elif q.startswith("why"):
+        return "why"
+    return "general"
 
-def semantic_search(question, chunks, top_k=10):
-    question_embedding = model.encode(question, convert_to_tensor=True)
-    scored_chunks = []
+def semantic_search(question, chunks, selected_doc, refine_query):
+    logging.debug(f"Semantic search started for: {question}")
+    query_embedding = model.encode(question, convert_to_tensor=True)
+    matches = []
 
     for chunk in chunks:
         content = chunk.get("text", "")
+        doc_title = chunk.get("document_title", "")
+        section = chunk.get("section", "")
+
+        if selected_doc and doc_title != selected_doc:
+            continue
+        if refine_query and refine_query.lower() not in content.lower():
+            continue
+
         chunk_embedding = model.encode(content, convert_to_tensor=True)
-        score = float(util.pytorch_cos_sim(question_embedding, chunk_embedding)[0])
-        scored_chunks.append((chunk, score))
+        score = util.pytorch_cos_sim(query_embedding, chunk_embedding).item()
 
-    scored_chunks.sort(key=lambda x: x[1], reverse=True)
-    top_matches = scored_chunks[:top_k]
+        if score > 0.45:
+            matches.append({
+                "document": doc_title,
+                "section": section,
+                "content": content,
+                "score": round(score, 3),
+                "reason": f"Semantic match with score {round(score, 3)}"
+            })
 
-    results = []
-    for match, score in top_matches:
-        results.append({
-            "document": match.get("document_title", ""),
-            "section": match.get("section", ""),
-            "content": match.get("text", ""),
-            "score": round(score, 4),
-            "reason": f"Matched semantically with score {round(score, 4)}"
-        })
-
-    return results
+    matches.sort(key=lambda x: x["score"], reverse=True)
+    logging.debug(f"Semantic search completed. {len(matches)} matches found.")
+    return matches
