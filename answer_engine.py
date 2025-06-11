@@ -3,10 +3,9 @@ import numpy as np
 from sentence_transformers import SentenceTransformer, util
 from sklearn.feature_extraction.text import CountVectorizer
 
-# Load model once
-model = SentenceTransformer('all-MiniLM-L6-v2')
+# Load model from preloaded folder
+model = SentenceTransformer('./model')
 
-# Basic intent classifier
 def classify_intent(question):
     q = question.lower()
     if q.startswith("how"): return "how"
@@ -15,16 +14,13 @@ def classify_intent(question):
     if q.startswith("when"): return "when"
     return "unknown"
 
-# Generate co-occurrence term scores
 def co_occurrence_score(text, query_terms):
     count = sum(term in text.lower() for term in query_terms)
     return count / len(query_terms) if query_terms else 0
 
-# Phrase map (could be extended later)
 def extract_terms(query):
     return [t.strip() for t in query.lower().split() if len(t.strip()) > 2]
 
-# Semantic search logic
 def semantic_search(chunks, query, top_k=10):
     query_embedding = model.encode(query, convert_to_tensor=True)
     chunk_texts = [c["text"] for c in chunks]
@@ -40,7 +36,7 @@ def semantic_search(chunks, query, top_k=10):
         reason = []
 
         if score >= 0.25:
-            reason.append(f"semantic match ≥ 0.25")
+            reason.append("semantic match ≥ 0.25")
 
         co_score = co_occurrence_score(chunk["text"], query_terms)
         if co_score > 0:
