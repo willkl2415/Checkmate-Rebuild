@@ -3,8 +3,8 @@ import numpy as np
 from sentence_transformers import SentenceTransformer, util
 from sklearn.feature_extraction.text import CountVectorizer
 
-# Load model from preloaded folder
-model = SentenceTransformer('./model')
+# Correct local model load for Render
+model = SentenceTransformer('model')
 
 def classify_intent(question):
     q = question.lower()
