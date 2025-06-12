@@ -1,36 +1,51 @@
-from sentence_transformers import CrossEncoder
-from difflib import SequenceMatcher
+from sentence_transformers import SentenceTransformer, util
 import torch
+import re
 
-model = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
-def simple_keyword_score(query, text):
-    query = query.lower()
-    text = text.lower()
-    return SequenceMatcher(None, query, text).ratio()
+def clean(text):
+    return re.sub(r"\s+", " ", text.strip())
 
-def get_hybrid_answers(question, chunks, selected_doc, refine_query):
-    filtered_chunks = [c for c in chunks if (selected_doc in ["", c["document"]])]
-    
-    if refine_query:
-        filtered_chunks = [c for c in filtered_chunks if refine_query.lower() in c["content"].lower()]
+def keyword_match(question, chunks, selected_doc, refine_query):
+    q_words = set(question.lower().split())
+    refine_words = set(refine_query.lower().split()) if refine_query else set()
+    results = []
 
-    top_k = 30  # initial shortlist size
-    keyword_scored = sorted(filtered_chunks, key=lambda c: simple_keyword_score(question, c["content"]), reverse=True)
-    shortlist = keyword_scored[:top_k]
+    for c in chunks:
+        if selected_doc and c.get("document") != selected_doc:
+            continue
 
-    pairs = [[question, c["content"]] for c in shortlist]
-    scores = model.predict(pairs)
+        fulltext = f"{c.get('content', '')}"
+        fulltext_lower = fulltext.lower()
 
-    reranked = sorted(zip(shortlist, scores), key=lambda x: x[1], reverse=True)
-    final_results = []
+        if all(word in fulltext_lower for word in q_words.union(refine_words)):
+            results.append({
+                "document": c.get("document"),
+                "section": c.get("section", "Uncategorised"),
+                "text": clean(fulltext)
+            })
 
-    for chunk, score in reranked[:10]:
-        final_results.append({
-            "document": chunk["document"],
-            "section": chunk.get("section", "Uncategorised"),
-            "score": round(float(score), 4),
-            "content": chunk["content"]
-        })
+    return results
 
-    return final_results
+def hybrid_rerank(question, results):
+    if not results:
+        return []
+
+    question_embedding = model.encode(question, convert_to_tensor=True)
+    reranked = []
+
+    for r in results[:20]:  # Only rerank top 20 results
+        chunk_embedding = model.encode(r['text'], convert_to_tensor=True)
+        score = util.cos_sim(question_embedding, chunk_embedding).item()
+        r["score"] = round(score, 4)
+        reranked.append(r)
+
+    reranked.sort(key=lambda x: x["score"], reverse=True)
+    return reranked
+
+def get_answers(question, chunks, selected_doc, refine_query, semantic_mode):
+    selected = selected_doc if selected_doc else ""
+    matches = keyword_match(question, chunks, selected, refine_query)
+    reranked = hybrid_rerank(question, matches)
+    return reranked if reranked else matches
