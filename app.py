@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request
 import json
 import logging, sys
-from hybrid_engine import get_hybrid_answers  # Uses keyword + rerank pipeline
+from hybrid_engine import get_hybrid_answers
 
 logging.basicConfig(level=logging.DEBUG, handlers=[logging.StreamHandler(sys.stdout)])
 app = Flask(__name__)
