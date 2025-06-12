@@ -1,78 +1,33 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
+from answer_engine import get_answers
 import json
-from answer_engine import semantic_search
-import logging
-
-# Enable logging
-logging.basicConfig(level=logging.DEBUG)
+import os
 
 app = Flask(__name__)
 
-with open("chunks.json", "r") as f:
-    chunks = json.load(f)
+# Load chunks.json
+with open('chunks.json', 'r', encoding='utf-8') as f:
+    chunks_data = json.load(f)
 
-@app.route("/", methods=["GET", "POST"])
+@app.route('/')
 def index():
-    question = ""
-    document = ""
-    refine_query = ""
-    semantic_mode = False
-    answer = []
+    return render_template('index.html')
 
-    documents = sorted(set(chunk["document_title"] for chunk in chunks))
+@app.route('/ask', methods=['POST'])
+def ask():
+    data = request.get_json()
+    query = data.get('query', '')
+    selected_docs = data.get('selectedDocs', [])
+    refine_terms = data.get('refineTerms', '')
+    use_semantic = data.get('useSemantic', False)
 
-    if request.method == "POST":
-        logging.debug("POST received")
+    print(f"[DEBUG] Query: {query}")
+    print(f"[DEBUG] Selected Docs: {selected_docs}")
+    print(f"[DEBUG] Refine Terms: {refine_terms}")
+    print(f"[DEBUG] Semantic Enabled: {use_semantic}")
 
-        if request.form.get("clear"):
-            logging.debug("Clear triggered")
-            return render_template("index.html",
-                                   question="",
-                                   documents=documents,
-                                   document="",
-                                   refine_query="",
-                                   semantic_mode=False,
-                                   answer=[])
+    results = get_answers(query, chunks_data, selected_docs, refine_terms, use_semantic)
+    return jsonify(results)
 
-        question = request.form.get("question", "")
-        document = request.form.get("document", "")
-        refine_query = request.form.get("refine_query", "")
-        semantic_mode = request.form.get("semantic") is not None
-
-        logging.debug(f"Question: {question}")
-        logging.debug(f"Document filter: {document}")
-        logging.debug(f"Refine query: {refine_query}")
-        logging.debug(f"Semantic toggle: {semantic_mode}")
-
-        if semantic_mode:
-            logging.debug("Semantic mode activated")
-            answer = semantic_search(question, chunks, document, refine_query)
-        else:
-            logging.debug("Running keyword search fallback")
-            for chunk in chunks:
-                content = chunk.get("text", "")
-                doc_title = chunk.get("document_title", "")
-                section = chunk.get("section", "")
-
-                if document and doc_title != document:
-                    continue
-                if refine_query and refine_query.lower() not in content.lower():
-                    continue
-                if question.lower() in content.lower():
-                    answer.append({
-                        "document": doc_title,
-                        "section": section,
-                        "content": content,
-                        "reason": "Direct keyword match"
-                    })
-
-    return render_template("index.html",
-                           question=question,
-                           documents=documents,
-                           document=document,
-                           refine_query=refine_query,
-                           semantic_mode=semantic_mode,
-                           answer=answer)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
