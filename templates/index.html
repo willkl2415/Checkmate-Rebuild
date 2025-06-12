@@ -37,22 +37,15 @@
         </div>
         <form method="post">
             <input type="text" name="question" placeholder="Type your question..." value="{{ question }}" />
-
-            <label for="document">Filter by Document:</label>
             <select name="document">
-                <option value="All Documents" {% if selected_doc == "All Documents" %}selected{% endif %}>All Documents</option>
                 {% for doc in documents %}
                     <option value="{{ doc }}" {% if doc == selected_doc %}selected{% endif %}>{{ doc }}</option>
                 {% endfor %}
             </select>
-
             <input type="text" name="refine_query" placeholder="Refine your search..." value="{{ refine_query }}" />
-
             <label style="display:block;margin-top:10px;">
-                <input type="checkbox" name="semantic" {% if semantic_mode %}checked{% endif %}>
-                Use Semantic Matching
+                <input type="checkbox" name="semantic" {% if semantic_mode %}checked{% endif %}> Use Semantic Matching
             </label>
-
             <button type="submit" class="green-button"><strong>Ask Check-Mate</strong></button>
             <button type="submit" name="clear" value="1" class="red-button"><strong>Clear Search</strong></button>
         </form>
