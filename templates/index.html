@@ -39,7 +39,7 @@
             <input type="text" name="question" placeholder="Type your question..." value="{{ question }}" />
             <select name="document">
                 {% for doc in documents %}
-                    <option value="{{ doc }}" {% if doc == selected_doc %}selected{% endif %}>{{ doc }}</option>
+                    <option value="{{ doc }}" {% if doc == document %}selected{% endif %}>{{ doc }}</option>
                 {% endfor %}
             </select>
             <input type="text" name="refine_query" placeholder="Refine your search..." value="{{ refine_query }}" />
@@ -56,7 +56,7 @@
             {% for chunk in answer %}
             <li>
                 <strong>{{ chunk.document }}</strong> — {{ chunk.section }}<br/>
-                <p>{{ chunk.content }}</p>
+                <p>{{ chunk.text }}</p>
                 {% if chunk.score %}<p><strong>Score:</strong> {{ chunk.score }}</p>{% endif %}
                 {% if chunk.reason %}<p><strong>Reason:</strong> {{ chunk.reason }}</p>{% endif %}
             </li>
