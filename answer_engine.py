@@ -23,10 +23,10 @@ def answer_with_semantic(query, chunks, selected_doc, refine_query):
 
     print(f"[DEBUG] Total Chunks After Filter: {len(filtered_chunks)}")
 
-    # 🚫 Protective limit (temporary): Max 500 chunks
-    max_chunks = 500
+    # ⛔ Protective limit: Max 250 chunks
+    max_chunks = 250
     if len(filtered_chunks) > max_chunks:
-        print(f"[DEBUG] Trimming to first {max_chunks} chunks to avoid overload")
+        print(f"[DEBUG] Trimming to first {max_chunks} chunks to avoid timeout")
         filtered_chunks = filtered_chunks[:max_chunks]
 
     if not filtered_chunks:
