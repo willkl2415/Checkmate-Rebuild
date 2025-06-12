@@ -1,4 +1,4 @@
-# Triggered update to enable debug logs for semantic traceability
+# Debugging mode activated to trace semantic toggle logic (v2)
 services:
   - type: web
     name: checkmate3
