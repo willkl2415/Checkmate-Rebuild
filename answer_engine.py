@@ -1,9 +1,6 @@
 import re
-import numpy as np
-import torch
 from sentence_transformers import SentenceTransformer, util
 
-# Load model once
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 def clean(text):
@@ -14,13 +11,12 @@ def get_answers(query, chunks_data, selected_docs, refine_terms, use_semantic):
 
     if use_semantic:
         print("[DEBUG] Using semantic search")
-
         query_embedding = model.encode(query, convert_to_tensor=True)
 
         for chunk in chunks_data:
             doc_name = chunk.get('document', '')
             section = chunk.get('section', '')
-            content = chunk.get('text', '')
+            content = chunk.get('content', '')
 
             if selected_docs and doc_name not in selected_docs:
                 continue
@@ -38,18 +34,15 @@ def get_answers(query, chunks_data, selected_docs, refine_terms, use_semantic):
             })
 
         results.sort(key=lambda x: x['score'], reverse=True)
-        top_results = results[:10]
-        print(f"[DEBUG] Top Semantic Match Score: {top_results[0]['score']:.4f}" if top_results else "[DEBUG] No semantic matches found.")
-        return top_results
+        return results[:10]
 
     else:
         print("[DEBUG] Using keyword search")
-
         q = query.lower()
         for chunk in chunks_data:
             doc_name = chunk.get('document', '')
             section = chunk.get('section', '')
-            content = chunk.get('text', '')
+            content = chunk.get('content', '')
 
             if selected_docs and doc_name not in selected_docs:
                 continue
@@ -63,5 +56,4 @@ def get_answers(query, chunks_data, selected_docs, refine_terms, use_semantic):
                     'score': 1.0
                 })
 
-        print(f"[DEBUG] Keyword results found: {len(results)}")
         return results[:10]
