@@ -1,3 +1,4 @@
+# Triggered update to enable debug logs for semantic traceability
 services:
   - type: web
     name: checkmate3
