@@ -1,10 +1,13 @@
 from flask import Flask, render_template, request
 import json
 from answer_engine import semantic_search
+import logging
+
+# Setup debug logging
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 
-# Load the data
 with open("chunks.json", "r") as f:
     chunks = json.load(f)
 
@@ -19,7 +22,10 @@ def index():
     documents = sorted(set(chunk["document_title"] for chunk in chunks))
 
     if request.method == "POST":
+        logging.debug("POST received")
+
         if request.form.get("clear"):
+            logging.debug("Clear triggered")
             return render_template("index.html",
                                    question="",
                                    documents=documents,
@@ -33,11 +39,16 @@ def index():
         refine_query = request.form.get("refine_query", "")
         semantic_mode = request.form.get("semantic") is not None
 
+        logging.debug(f"Question: {question}")
+        logging.debug(f"Document filter: {document}")
+        logging.debug(f"Refine query: {refine_query}")
+        logging.debug(f"Semantic toggle: {semantic_mode}")
+
         if semantic_mode:
-            # Run Semantic Search
+            logging.debug("Semantic mode activated")
             answer = semantic_search(question, chunks, document, refine_query)
         else:
-            # Run Token-Based Match
+            logging.debug("Running keyword search fallback")
             for chunk in chunks:
                 content = chunk.get("text", "")
                 doc_title = chunk.get("document_title", "")
