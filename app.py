@@ -4,54 +4,47 @@ from answer_engine import semantic_search
 
 app = Flask(__name__)
 
-# Load chunks of information from the file
+# Load the chunks of information from chunks.json
 with open("chunks.json", "r") as f:
     chunks = json.load(f)
 
-# Home page
 @app.route("/", methods=["GET", "POST"])
 def index():
-    results = []
     question = ""
-    selected_doc = ""
+    document = ""
     refine_query = ""
-    semantic = False
+    answer = []
 
+    # Extract all document titles from the chunks
     documents = sorted(set(chunk["document_title"] for chunk in chunks))
 
     if request.method == "POST":
+        # If user clicked "Clear Search", reset everything
+        if request.form.get("clear"):
+            return render_template("index.html",
+                                   question="",
+                                   documents=documents,
+                                   document="",
+                                   refine_query="",
+                                   semantic_mode=True,
+                                   answer=[])
+
+        # Capture the question, document filter, and refine query
         question = request.form.get("question", "")
-        selected_doc = request.form.get("selected_doc", "")
+        document = request.form.get("document", "")
         refine_query = request.form.get("refine_query", "")
-        semantic = request.form.get("semantic") is not None
 
-        if semantic:
-            results = semantic_search(question, chunks, selected_doc, refine_query)
-        else:
-            for chunk in chunks:
-                content = chunk.get("text", "")
-                doc_title = chunk.get("document_title", "")
-                section = chunk.get("section", "")
+        # ✅ Always perform Semantic Matching
+        answer = semantic_search(question, chunks, document, refine_query)
 
-                if selected_doc and doc_title != selected_doc:
-                    continue
-                if refine_query and refine_query.lower() not in content.lower():
-                    continue
-                if question.lower() in content.lower():
-                    results.append({
-                        "document": doc_title,
-                        "section": section,
-                        "content": content,
-                        "reason": "Direct keyword match"
-                    })
-
+    # Return the page with search results
     return render_template("index.html",
-                           results=results,
                            question=question,
                            documents=documents,
-                           selected_doc=selected_doc,
+                           document=document,
                            refine_query=refine_query,
-                           semantic=semantic)
+                           semantic_mode=True,
+                           answer=answer)
 
 if __name__ == "__main__":
     app.run(debug=True)
