@@ -1,51 +1,44 @@
 from sentence_transformers import SentenceTransformer, util
 import torch
-import re
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# Load transformer model once
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
-def clean(text):
-    return re.sub(r"\s+", " ", text.strip())
+def get_hybrid_answers(question, chunks, selected_document="", refine_query=""):
+    # Step 1: Filter chunks
+    filtered = [
+        c for c in chunks
+        if (not selected_document or c['document'] == selected_document)
+        and (not refine_query or refine_query.lower() in c['content'].lower())
+    ]
 
-def keyword_match(question, chunks, selected_doc, refine_query):
-    q_words = set(question.lower().split())
-    refine_words = set(refine_query.lower().split()) if refine_query else set()
-    results = []
+    # Step 2: Basic keyword scoring
+    def keyword_score(text, query):
+        q_words = query.lower().split()
+        text = text.lower()
+        return sum(text.count(w) for w in q_words)
 
-    for c in chunks:
-        if selected_doc and c.get("document") != selected_doc:
-            continue
+    scored = [
+        {
+            "text": c["content"],
+            "document": c["document"],
+            "section": c.get("section", "Uncategorised"),
+            "score": keyword_score(c["content"], question),
+        }
+        for c in filtered
+    ]
 
-        fulltext = f"{c.get('content', '')}"
-        fulltext_lower = fulltext.lower()
+    # Step 3: Select top 20 by keyword
+    top = sorted(scored, key=lambda x: x["score"], reverse=True)[:20]
 
-        if all(word in fulltext_lower for word in q_words.union(refine_words)):
-            results.append({
-                "document": c.get("document"),
-                "section": c.get("section", "Uncategorised"),
-                "text": clean(fulltext)
-            })
+    # Step 4: Semantic rerank if anything was retrieved
+    if top:
+        q_embed = model.encode(question, convert_to_tensor=True)
+        t_embeds = model.encode([c["text"] for c in top], convert_to_tensor=True)
+        sims = util.cos_sim(q_embed, t_embeds)[0]
 
-    return results
+        for i, chunk in enumerate(top):
+            chunk["semantic_score"] = float(sims[i])
+        top = sorted(top, key=lambda x: x["semantic_score"], reverse=True)
 
-def hybrid_rerank(question, results):
-    if not results:
-        return []
-
-    question_embedding = model.encode(question, convert_to_tensor=True)
-    reranked = []
-
-    for r in results[:20]:  # Only rerank top 20 results
-        chunk_embedding = model.encode(r['text'], convert_to_tensor=True)
-        score = util.cos_sim(question_embedding, chunk_embedding).item()
-        r["score"] = round(score, 4)
-        reranked.append(r)
-
-    reranked.sort(key=lambda x: x["score"], reverse=True)
-    return reranked
-
-def get_answers(question, chunks, selected_doc, refine_query, semantic_mode):
-    selected = selected_doc if selected_doc else ""
-    matches = keyword_match(question, chunks, selected, refine_query)
-    reranked = hybrid_rerank(question, matches)
-    return reranked if reranked else matches
+    return top
