@@ -1,18 +1,21 @@
 from flask import Flask, render_template, request, jsonify
 from answer_engine import get_answers
 import json
-import os
 
 app = Flask(__name__)
 
-# Load chunks.json
+# Load chunks
 with open('chunks.json', 'r', encoding='utf-8') as f:
     chunks_data = json.load(f)
 
+# Home route
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Extract unique document names
+    documents = sorted(set(chunk["document"] for chunk in chunks_data if "document" in chunk))
+    return render_template('index.html', documents=documents)
 
+# Handle question post
 @app.route('/ask', methods=['POST'])
 def ask():
     data = request.get_json()
