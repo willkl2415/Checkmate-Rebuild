@@ -1,23 +1,11 @@
-import json
 from sentence_transformers import SentenceTransformer, util
-import torch
 import logging
 
-# Enable debug logs
+# Enable logging
 logging.basicConfig(level=logging.DEBUG)
 
-# Load model from Hugging Face
+# Load the smart model that understands meaning
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-
-def classify_intent(question):
-    q = question.lower()
-    if q.startswith("what"):
-        return "what"
-    elif q.startswith("how"):
-        return "how"
-    elif q.startswith("why"):
-        return "why"
-    return "general"
 
 def semantic_search(question, chunks, selected_doc, refine_query):
     logging.debug(f"Semantic search started for: {question}")
@@ -29,7 +17,7 @@ def semantic_search(question, chunks, selected_doc, refine_query):
         doc_title = chunk.get("document_title", "")
         section = chunk.get("section", "")
 
-        if selected_doc and selected_doc != "All Documents" and doc_title != selected_doc:
+        if selected_doc and doc_title != selected_doc:
             continue
         if refine_query and refine_query.lower() not in content.lower():
             continue
