@@ -3,7 +3,7 @@ import json
 from answer_engine import semantic_search
 import logging
 
-# Setup debug logging
+# Enable logging
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
