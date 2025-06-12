@@ -9,7 +9,7 @@ with open('chunks.json', 'r', encoding='utf-8') as f:
     chunks_data = json.load(f)
 
 # Home route
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
     # Extract unique document names
     documents = sorted(set(chunk["document"] for chunk in chunks_data if "document" in chunk))
