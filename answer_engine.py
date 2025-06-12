@@ -26,19 +26,22 @@ def get_answers(query, chunks_data, selected_docs, refine_terms, use_semantic):
             chunk_embedding = model.encode(content, convert_to_tensor=True)
             similarity = util.pytorch_cos_sim(query_embedding, chunk_embedding).item()
 
-            results.append({
-                'document': doc_name,
-                'section': section,
-                'text': clean(content),
-                'score': similarity
-            })
+            if similarity > 0.45:
+                results.append({
+                    'document': doc_name,
+                    'section': section,
+                    'text': clean(content),
+                    'score': round(similarity, 3),
+                    'reason': f"Semantic match with score {round(similarity, 3)}"
+                })
 
         results.sort(key=lambda x: x['score'], reverse=True)
-        return results[:10]
+        return results
 
     else:
         print("[DEBUG] Using keyword search")
         q = query.lower()
+
         for chunk in chunks_data:
             doc_name = chunk.get('document', '')
             section = chunk.get('section', '')
@@ -53,7 +56,8 @@ def get_answers(query, chunks_data, selected_docs, refine_terms, use_semantic):
                     'document': doc_name,
                     'section': section,
                     'text': clean(content),
-                    'score': 1.0
+                    'score': 1.0,
+                    'reason': "Keyword match"
                 })
 
-        return results[:10]
+        return results  # ✅ returns all matches, uncapped
