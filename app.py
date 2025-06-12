@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request
 import json
 import logging, sys
-from hybrid_engine import get_hybrid_answers
+from hybrid_engine import get_hybrid_answers_v2 as get_hybrid_answers  # Force fresh import
 
 logging.basicConfig(level=logging.DEBUG, handlers=[logging.StreamHandler(sys.stdout)])
 app = Flask(__name__)
@@ -23,7 +23,8 @@ def index():
     if request.method == "POST":
         if request.form.get("clear"):
             return render_template("index.html", question="", documents=documents,
-                                   document="", refine_query="", answer=[])
+                                   document="", refine_query="",
+                                   answer=[])
 
         question = request.form.get("question", "")
         document = request.form.get("document", "")
