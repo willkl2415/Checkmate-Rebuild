@@ -1,39 +1,67 @@
+import re
+import numpy as np
+import torch
 from sentence_transformers import SentenceTransformer, util
-import logging
 
-# Enable logging
-logging.basicConfig(level=logging.DEBUG)
-
-# Load the smart model that understands meaning
+# Load model once
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
-def semantic_search(question, chunks, selected_doc, refine_query):
-    logging.debug(f"Semantic search started for: {question}")
-    query_embedding = model.encode(question, convert_to_tensor=True)
-    matches = []
+def clean(text):
+    return re.sub(r'\s+', ' ', text.replace('\n', ' ')).strip()
 
-    for chunk in chunks:
-        content = chunk.get("text", "")
-        doc_title = chunk.get("document_title", "")
-        section = chunk.get("section", "")
+def get_answers(query, chunks_data, selected_docs, refine_terms, use_semantic):
+    results = []
 
-        if selected_doc and doc_title != selected_doc:
-            continue
-        if refine_query and refine_query.lower() not in content.lower():
-            continue
+    if use_semantic:
+        print("[DEBUG] Using semantic search")
 
-        chunk_embedding = model.encode(content, convert_to_tensor=True)
-        score = util.pytorch_cos_sim(query_embedding, chunk_embedding).item()
+        query_embedding = model.encode(query, convert_to_tensor=True)
 
-        if score > 0.45:
-            matches.append({
-                "document": doc_title,
-                "section": section,
-                "content": content,
-                "score": round(score, 3),
-                "reason": f"Semantic match with score {round(score, 3)}"
+        for chunk in chunks_data:
+            doc_name = chunk.get('document', '')
+            section = chunk.get('section', '')
+            content = chunk.get('text', '')
+
+            if selected_docs and doc_name not in selected_docs:
+                continue
+            if refine_terms and refine_terms.lower() not in content.lower():
+                continue
+
+            chunk_embedding = model.encode(content, convert_to_tensor=True)
+            similarity = util.pytorch_cos_sim(query_embedding, chunk_embedding).item()
+
+            results.append({
+                'document': doc_name,
+                'section': section,
+                'text': clean(content),
+                'score': similarity
             })
 
-    matches.sort(key=lambda x: x["score"], reverse=True)
-    logging.debug(f"Semantic search completed. {len(matches)} matches found.")
-    return matches
+        results.sort(key=lambda x: x['score'], reverse=True)
+        top_results = results[:10]
+        print(f"[DEBUG] Top Semantic Match Score: {top_results[0]['score']:.4f}" if top_results else "[DEBUG] No semantic matches found.")
+        return top_results
+
+    else:
+        print("[DEBUG] Using keyword search")
+
+        q = query.lower()
+        for chunk in chunks_data:
+            doc_name = chunk.get('document', '')
+            section = chunk.get('section', '')
+            content = chunk.get('text', '')
+
+            if selected_docs and doc_name not in selected_docs:
+                continue
+            if refine_terms and refine_terms.lower() not in content.lower():
+                continue
+            if q in content.lower():
+                results.append({
+                    'document': doc_name,
+                    'section': section,
+                    'text': clean(content),
+                    'score': 1.0
+                })
+
+        print(f"[DEBUG] Keyword results found: {len(results)}")
+        return results[:10]
