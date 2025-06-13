@@ -1,27 +1,14 @@
 from flask import Flask, render_template, request
 import json
 import logging, sys
-from answer_engine import get_answers
 
 logging.basicConfig(level=logging.DEBUG, handlers=[logging.StreamHandler(sys.stdout)])
+
 app = Flask(__name__)
 
 # Load chunks once
 with open("chunks.json", "r", encoding="utf-8") as f:
     chunks = json.load(f)
-
-def document_priority(doc_name):
-    name = doc_name.upper()
-    if "JSP 822" in name:
-        return 1
-    elif "DTSM" in name:
-        return 2
-    elif "JSP" in name and "822" not in name:
-        return 3
-    elif "MOD" in name or "DEFENCE" in name:
-        return 4
-    else:
-        return 5
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -29,38 +16,57 @@ def index():
     document = ""
     refine_query = ""
     answer = []
-    full_result_count = 0
 
+    # All unique documents for dropdown
     docs = sorted(set(c.get('document', '') for c in chunks))
     documents = ["All Documents"] + docs
 
     if request.method == "POST":
         if request.form.get("clear"):
             return render_template("index.html", question="", documents=documents,
-                                   document="", refine_query="", answer=[], full_result_count=0)
+                                   document="", refine_query="", answer=[])
 
-        question = request.form.get("question", "")
+        question = request.form.get("question", "").strip()
         document = request.form.get("document", "")
-        refine_query = request.form.get("refine_query", "")
+        refine_query = request.form.get("refine_query", "").strip()
 
         logging.debug(f"Question: {question}")
         logging.debug(f"Document Filter: {document}")
         logging.debug(f"Refine Query: {refine_query}")
 
         selected = "" if document == "All Documents" else document
-        answer = get_answers(question, chunks, selected, refine_query)
-        full_result_count = len(answer)
 
-        # Prioritise document name
-        answer.sort(key=lambda x: document_priority(x['document']))
+        def keyword_score(text, query):
+            q_words = query.lower().split()
+            text = text.lower()
+            return sum(text.count(w) for w in q_words)
 
-        # Only trim to top 10 if refine or filter is applied
-        if selected or refine_query:
-            answer = answer[:10]
+        # Filter by document + refine query
+        filtered = [
+            c for c in chunks
+            if (not selected or c['document'] == selected)
+            and (not refine_query or refine_query.lower() in c['content'].lower())
+        ]
+
+        logging.debug(f"Chunks after filter: {len(filtered)}")
+
+        # Score everything
+        answer = [
+            {
+                "document": c["document"],
+                "section": c.get("section", "Uncategorised"),
+                "content": c["content"],
+                "score": keyword_score(c["content"], question)
+            }
+            for c in filtered
+            if keyword_score(c["content"], question) > 0
+        ]
+
+        # Sort highest to lowest by score
+        answer = sorted(answer, key=lambda x: x["score"], reverse=True)
 
     return render_template("index.html", question=question, documents=documents,
-                           document=document, refine_query=refine_query,
-                           answer=answer, full_result_count=full_result_count)
+                           document=document, refine_query=refine_query, answer=answer)
 
 if __name__ == "__main__":
     app.run(debug=True)
