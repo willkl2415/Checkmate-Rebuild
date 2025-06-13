@@ -9,7 +9,7 @@
             let timeout = null;
             refineInput.addEventListener("input", () => {
                 clearTimeout(timeout);
-                timeout = setTimeout(() => refineInput.form.submit(), 1000);  // Delay increased from 600ms to 1500ms
+                timeout = setTimeout(() => refineInput.form.submit(), 1000);  // Delay increased from 600ms to 1000ms
             });
 
             const docSelect = document.querySelector("select[name='document']");
@@ -52,7 +52,7 @@
         <ul>
             {% for chunk in answer %}
             <li>
-                <strong>{{ chunk.document }}</strong> — {{ chunk.section }}<br/>
+                <strong>{{ chunk.document }}</strong>{% if chunk.section != "Uncategorised" %} — {{ chunk.section }}{% endif %}<br/>
                 <p>{{ chunk.content }}</p>
                 {% if chunk.score %}<p><strong>Score:</strong> {{ chunk.score }}</p>{% endif %}
             </li>
