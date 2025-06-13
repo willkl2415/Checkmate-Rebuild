@@ -9,7 +9,7 @@
             let timeout = null;
             refineInput.addEventListener("input", () => {
                 clearTimeout(timeout);
-                timeout = setTimeout(() => refineInput.form.submit(), 1000);  // Delay increased from 600ms to 1000ms
+                timeout = setTimeout(() => refineInput.form.submit(), 1500);  // Delay adjusted from 1000ms to 1500ms
             });
 
             const docSelect = document.querySelector("select[name='document']");
