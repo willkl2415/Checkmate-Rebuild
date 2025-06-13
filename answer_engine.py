@@ -1,42 +1,42 @@
-def get_answers(question, chunks, selected_document="", refine_query=""):
-    def keyword_score(text, query):
-        q_words = query.lower().split()
-        text = text.lower()
-        return sum(text.count(w) for w in q_words)
+import json
+import re
 
-    def get_priority(doc_name):
-        name = doc_name.upper()
-        if "JSP 822" in name:
-            return 1
-        elif "DTSM" in name:
-            return 2
-        elif "JSP" in name:
-            return 3
-        elif "MOD" in name or "DEFENCE" in name:
-            return 4
-        else:
-            return 5
+with open("chunks.json", "r", encoding="utf-8") as f:
+    chunks = json.load(f)
 
-    # Step 1: Base filter
-    filtered = [
-        c for c in chunks
-        if (not selected_document or c['document'] == selected_document)
-        and (not refine_query or refine_query.lower() in c['content'].lower())
-    ]
+def get_priority(filename):
+    name = filename.upper()
+    if "JSP 822" in name:
+        return 1
+    elif "DTSM" in name:
+        return 2
+    elif "JSP" in name:
+        return 3
+    elif "MOD" in name or "DEFENCE" in name:
+        return 4
+    else:
+        return 5
 
-    # Step 2: Score + priority
-    scored = [
-        {
-            "content": c["content"],
-            "document": c["document"],
-            "section": c.get("section", "Uncategorised"),
-            "score": keyword_score(c["content"], question),
-            "priority": get_priority(c["document"])
-        }
-        for c in filtered
-    ]
+def keyword_search(query, selected_doc="All Documents"):
+    query = query.lower()
+    keywords = query.split()
 
-    # Step 3: Sort by priority only (ignore score for now)
-    sorted_chunks = sorted(scored, key=lambda x: x["priority"])
+    results = []
+    for chunk in chunks:
+        doc_name = chunk["document"]
+        if selected_doc != "All Documents" and doc_name != selected_doc:
+            continue
 
-    return sorted_chunks
+        text = chunk["content"].lower()
+        if all(k in text for k in keywords):
+            results.append({
+                "document": doc_name,
+                "section": chunk.get("section", "Uncategorised"),
+                "content": chunk["content"],
+                "score": sum(text.count(k) for k in keywords),
+                "priority": get_priority(doc_name)
+            })
+
+    # Sort by priority first, then by score descending
+    sorted_results = sorted(results, key=lambda x: (x["priority"], -x["score"]))
+    return sorted_results
