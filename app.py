@@ -51,11 +51,12 @@ def index():
         answer = get_answers(question, chunks, selected, refine_query)
         full_result_count = len(answer)
 
-        # Apply document priority sorting
+        # Prioritise document name
         answer.sort(key=lambda x: document_priority(x['document']))
 
-        # Limit to top 10 after priority sort
-        answer = answer[:10]
+        # Only trim to top 10 if refine or filter is applied
+        if selected or refine_query:
+            answer = answer[:10]
 
     return render_template("index.html", question=question, documents=documents,
                            document=document, refine_query=refine_query,
