@@ -6,8 +6,8 @@ def get_answers(question, chunks, selected_doc="", refine_query=""):
         text = text.lower()
         return sum(text.count(w) for w in q_words)
 
-    def priority(document_name):
-        name = document_name.lower()
+    def get_priority(doc_name):
+        name = doc_name.lower()
         if "jsp 822" in name:
             return 1
         elif "dtsm" in name:
@@ -19,14 +19,14 @@ def get_answers(question, chunks, selected_doc="", refine_query=""):
         else:
             return 5
 
-    # Step 1: Filter by document and refine string
+    # Step 1: Filter based on document and refine query
     filtered = [
         c for c in chunks
         if (not selected_doc or c['document'] == selected_doc)
         and (not refine_query or refine_query.lower() in c['content'].lower())
     ]
 
-    # Step 2: Apply score
+    # Step 2: Score and priority tagging
     results = []
     for c in filtered:
         score = keyword_score(c["content"], question)
@@ -36,10 +36,10 @@ def get_answers(question, chunks, selected_doc="", refine_query=""):
                 "section": c.get("section", ""),
                 "content": c["content"],
                 "score": score,
-                "priority": priority(c["document"])
+                "priority": get_priority(c["document"])
             })
 
-    # Step 3: Sort by priority (ascending) then score (descending)
-    sorted_results = sorted(results, key=lambda x: (x["priority"], -x["score"]))
+    # Step 3: Sort by priority first, then score
+    results_sorted = sorted(results, key=lambda x: (x["priority"], -x["score"]))
 
-    return sorted_results
+    return results_sorted
