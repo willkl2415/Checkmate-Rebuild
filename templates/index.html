@@ -53,7 +53,7 @@
             {% for chunk in answer %}
             <li>
                 <strong>{{ chunk.document }}</strong> — {{ chunk.section }}<br/>
-                <p>{{ chunk.text }}</p>
+                <p>{{ chunk.content }}</p>
                 {% if chunk.score %}<p><strong>Score:</strong> {{ chunk.score }}</p>{% endif %}
             </li>
             {% endfor %}
