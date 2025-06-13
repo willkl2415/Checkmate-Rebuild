@@ -9,7 +9,7 @@
             let timeout = null;
             refineInput.addEventListener("input", () => {
                 clearTimeout(timeout);
-                timeout = setTimeout(() => refineInput.form.submit(), 600);
+                timeout = setTimeout(() => refineInput.form.submit(), 600);  // Delay auto-submit
             });
 
             const docSelect = document.querySelector("select[name='document']");
@@ -36,11 +36,10 @@
             &copy; 2025 William Kennedy-Long. All rights reserved.
         </div>
         <form method="post">
-            <input type="text" name="query" placeholder="Type your question..." value="{{ query }}" />
+            <input type="text" name="question" placeholder="Type your question..." value="{{ question }}" />
             <select name="document">
-                <option value="">All Documents</option>
                 {% for doc in documents %}
-                    <option value="{{ doc }}" {% if doc == selected_document %}selected{% endif %}>{{ doc }}</option>
+                    <option value="{{ doc }}" {% if doc == selected_doc %}selected{% endif %}>{{ doc }}</option>
                 {% endfor %}
             </select>
             <input type="text" name="refine_query" placeholder="Refine your search..." value="{{ refine_query }}" />
@@ -48,14 +47,16 @@
             <button type="submit" name="clear" value="1" class="red-button"><strong>Clear Search</strong></button>
         </form>
 
-        <h3>Check-Mate’s Response ({{ results|length }} results)</h3>
-        {% if results %}
+        <h3>Check-Mate’s Response ({{ answer|length }} results)</h3>
+        {% if answer %}
         <p>Use the document filter to view all matches.</p>
         <ul>
-            {% for result in results %}
+            {% for chunk in answer %}
             <li>
-                <strong>{{ result.document }}</strong> — {{ result.section }}<br/>
-                <p>{{ result.content }}</p>
+                <strong>{{ chunk.document }}</strong> — {{ chunk.section }}<br/>
+                <p>{{ chunk.content }}</p>
+                {% if chunk.score %}<p><strong>Score:</strong> {{ chunk.score }}</p>{% endif %}
+                {% if chunk.reason %}<p><strong>Reason:</strong> {{ chunk.reason }}</p>{% endif %}
             </li>
             {% endfor %}
         </ul>
@@ -64,9 +65,5 @@
         {% endif %}
     </div>
 </div>
-
-<header class="copyright-header">
-    &copy; 2025 William Kennedy-Long. All rights reserved.
-</header>
 </body>
 </html>
