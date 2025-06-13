@@ -1,4 +1,4 @@
-import re
+# answer_engine.py
 
 def get_answers(question, chunks, selected_doc="", refine_query=""):
     def keyword_score(text, query):
@@ -6,40 +6,35 @@ def get_answers(question, chunks, selected_doc="", refine_query=""):
         text = text.lower()
         return sum(text.count(w) for w in q_words)
 
-    def get_priority(doc_name):
-        name = doc_name.lower()
-        if "jsp 822" in name:
+    def doc_priority(name):
+        name_upper = name.upper()
+        if "JSP 822" in name_upper:
             return 1
-        elif "dtsm" in name:
+        elif "DTSM" in name_upper:
             return 2
-        elif "jsp" in name:
+        elif "JSP" in name_upper:
             return 3
-        elif "mod" in name or "defence" in name:
+        elif "MOD" in name_upper or "DEFENCE" in name_upper:
             return 4
         else:
             return 5
 
-    # Step 1: Filter based on document and refine query
-    filtered = [
-        c for c in chunks
-        if (not selected_doc or c['document'] == selected_doc)
-        and (not refine_query or refine_query.lower() in c['content'].lower())
-    ]
-
-    # Step 2: Score and priority tagging
     results = []
-    for c in filtered:
-        score = keyword_score(c["content"], question)
-        if score > 0:
-            results.append({
-                "document": c["document"],
-                "section": c.get("section", ""),
-                "content": c["content"],
-                "score": score,
-                "priority": get_priority(c["document"])
-            })
+    for c in chunks:
+        if selected_doc and c["document"] != selected_doc:
+            continue
+        if refine_query and refine_query.lower() not in c["content"].lower():
+            continue
 
-    # Step 3: Sort by priority first, then score
-    results_sorted = sorted(results, key=lambda x: (x["priority"], -x["score"]))
+        results.append({
+            "document": c["document"],
+            "section": "" if c.get("section", "").upper() == "UNCATEGORISED" else c.get("section", ""),
+            "content": c["content"],
+            "score": keyword_score(c["content"], question),
+            "priority": doc_priority(c["document"]),
+        })
 
-    return results_sorted
+    # ✅ Sort strictly by priority only
+    sorted_results = sorted(results, key=lambda x: x["priority"])
+
+    return sorted_results
