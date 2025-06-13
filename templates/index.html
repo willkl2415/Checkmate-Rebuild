@@ -1,68 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Check-Mate</title>
-    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/style.css">
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const refineInput = document.querySelector("input[name='refine_query']");
-            let timeout = null;
-            refineInput.addEventListener("input", () => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => refineInput.form.submit(), 600);
+        async function submitQuery() {
+            const question = document.getElementById("question").value;
+            const document = document.getElementById("document").value;
+            const refine_query = document.getElementById("refine_query").value;
+            const include_subsections = document.getElementById("include_subsections").checked;
+
+            const response = await fetch("/search", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({question, document, refine_query, include_subsections}),
             });
 
-            const docSelect = document.querySelector("select[name='document']");
-            docSelect.addEventListener("change", () => docSelect.form.submit());
-        });
+            const results = await response.json();
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = "<h2>Check-Mate’s Response</h2><p>Use the document filter to view all matches.</p>";
+
+            results.forEach(r => {
+                const div = document.createElement("div");
+                div.className = "result";
+                div.innerHTML = `<strong>Section ${r.section}</strong><br>${r.text}`;
+                resultsDiv.appendChild(div);
+            });
+        }
+
+        function autoSubmit() {
+            clearTimeout(window.submitTimeout);
+            window.submitTimeout = setTimeout(submitQuery, 400);
+        }
     </script>
 </head>
 <body>
-<div class="container">
-    <div class="left-panel">
-        <h2 class="text-center">Welcome to Check-Mate</h2>
-        <img src="/static/checkmate.png" class="logo" />
-        <p><strong>Check-Mate</strong> is a go-to application for Training Consultants, Analysts, Designers, and Decision-Makers who demand accuracy, assurance, and speed – without compromise.</p>
-        <p><strong>Check-Mate</strong> is a cutting-edge AI solution built to deliver instant clarity in high-complexity environments – especially those shaped by Systems Approach to Training (SAT) and Defence Systems Approach to Training (DSAT).</p>
-        <p>Inspired by the finality of the phrase in chess, <strong>Check-Mate</strong> empowers you to instantly search, filter, and interrogate massive volumes of structured documentation – training, guidance, standards, and more – using OpenAI’s natural language and intelligent keyword filters.</p>
-        <p>Ask a question. Get an answer. Not in 30 minutes—but in 5 seconds.</p>
-        <p>Drawn directly from authoritative sources, every response is precise, context-rich, and ready for action.</p>
-        <p><strong>Check-Mate</strong> doesn’t just speed things up—it delivers time savings of up to 99.7%, transforming slow, manual searches into rapid, evidence-based decisions.</p>
-        <p><strong>Check-Mate isn’t just a nice to have, it’s your final move.</strong></p>
-    </div>
-
-    <div class="right-panel">
-        <div class="copyright-message">
-            &copy; 2025 William Kennedy-Long. All rights reserved.
-        </div>
-        <form method="post">
-            <input type="text" name="question" placeholder="Type your question..." value="{{ question }}" />
-            <select name="document">
-                {% for doc in documents %}
-                    <option value="{{ doc }}" {% if doc == document %}selected{% endif %}>{{ doc }}</option>
-                {% endfor %}
-            </select>
-            <input type="text" name="refine_query" placeholder="Refine your search..." value="{{ refine_query }}" />
-            <button type="submit" class="green-button"><strong>Ask Check-Mate</strong></button>
-            <button type="submit" name="clear" value="1" class="red-button"><strong>Clear Search</strong></button>
-        </form>
-
-        <h3>Check-Mate’s Response ({{ answer|length }} results)</h3>
-        {% if answer %}
-        <ul>
-            {% for chunk in answer %}
-            <li>
-                <strong>{{ chunk.document }}</strong> — {{ chunk.section }}<br/>
-                <p>{{ chunk.text }}</p>
-                {% if chunk.score %}<p><strong>Score:</strong> {{ chunk.score }}</p>{% endif %}
-                {% if chunk.semantic_score %}<p><strong>Semantic Score:</strong> {{ chunk.semantic_score }}</p>{% endif %}
-            </li>
+    <div id="sidebar">
+        <label>Filter by Document:</label>
+        <select id="document" onchange="submitQuery()">
+            <option value="">All Documents</option>
+            {% for doc in documents %}
+            <option value="{{ doc }}">{{ doc }}</option>
             {% endfor %}
-        </ul>
-        {% else %}
-        <p>Use the document filter to view all matches.</p>
-        {% endif %}
+        </select>
+        <label>Refine Search:</label>
+        <input type="text" id="refine_query" oninput="autoSubmit()">
+        <label><input type="checkbox" id="include_subsections" onchange="submitQuery()"> Include Subsections</label>
     </div>
-</div>
+
+    <div id="main">
+        <h1>Check-Mate</h1>
+        <textarea id="question" rows="2" placeholder="Ask your question..." oninput="autoSubmit()"></textarea>
+        <div id="results"></div>
+    </div>
 </body>
 </html>
