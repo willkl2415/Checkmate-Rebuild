@@ -53,8 +53,9 @@
             {% for chunk in answer %}
             <li>
                 <strong>{{ chunk.document }}</strong> — {{ chunk.section }}<br/>
-                <p>{{ chunk.content }}</p>
+                <p>{{ chunk.text }}</p>
                 {% if chunk.score %}<p><strong>Score:</strong> {{ chunk.score }}</p>{% endif %}
+                {% if chunk.semantic_score %}<p><strong>Semantic Score:</strong> {{ chunk.semantic_score }}</p>{% endif %}
             </li>
             {% endfor %}
         </ul>
