@@ -1,34 +1,32 @@
-# answer_engine.py
-
 from rapidfuzz import fuzz
 
+def document_priority(name):
+    name = name.lower()
+    if "jsp 822" in name:
+        return 1
+    elif "dtsm" in name:
+        return 2
+    elif "jsp" in name:
+        return 3
+    elif "mod" in name or "defence" in name:
+        return 4
+    else:
+        return 5
+
 def get_answers(question, chunks, selected_doc="", refine_query=""):
-    """
-    Retrieve and rank chunks based on a question and optional filters.
-    Applies fuzzy scoring and sorts globally by score in descending order.
-    """
+    # Step 1: Filter
+    filtered = [
+        c for c in chunks
+        if (not selected_doc or c['document'] == selected_doc)
+        and (not refine_query or refine_query.lower() in c['content'].lower())
+    ]
 
-    def apply_filters(c):
-        # Document match
-        if selected_doc and c["document"] != selected_doc:
-            return False
-        # Refine text match
-        if refine_query and refine_query.lower() not in c["content"].lower():
-            return False
-        return True
-
-    def score_chunk(content):
-        return fuzz.partial_ratio(question.lower(), content.lower())
-
-    # Apply filters first
-    filtered = [c for c in chunks if apply_filters(c)]
-
-    # Apply scoring
+    # Step 2: Score and classify priority
     for c in filtered:
-        c["score"] = score_chunk(c["content"])
+        c["score"] = fuzz.partial_ratio(question.lower(), c["content"].lower())
+        c["priority"] = document_priority(c["document"])
 
-    # Sort all scored chunks globally by descending score
-    sorted_chunks = sorted(filtered, key=lambda x: x["score"], reverse=True)
+    # Step 3: Sort by priority then score (descending)
+    sorted_chunks = sorted(filtered, key=lambda x: (x["priority"], -x["score"]))
 
-    # Return all results (no artificial slicing)
     return sorted_chunks
