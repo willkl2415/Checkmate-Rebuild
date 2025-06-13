@@ -1,22 +1,20 @@
-from sentence_transformers import SentenceTransformer, util
-import torch
+def get_answers(question, chunks, selected_document="", refine_query=""):
+    """
+    Fast keyword-based search only. No embedding, no reranking.
+    """
 
-# Load model once
-model = SentenceTransformer('all-MiniLM-L6-v2')
-
-def get_answers(question, chunks, selected_document, refine_query, semantic_mode=False):
-    # Apply document and refine filters
-    filtered_chunks = [
+    # Step 1: Filter by document and refine query
+    filtered = [
         c for c in chunks
-        if (not selected_document or c['document'] == selected_document) and
-           (not refine_query or refine_query.lower() in c['content'].lower())
+        if (not selected_document or c['document'] == selected_document)
+        and (not refine_query or refine_query.lower() in c['content'].lower())
     ]
 
-    # Score chunks based on keyword match count
+    # Step 2: Score by keyword presence in content
     def keyword_score(text, query):
-        query_terms = query.lower().split()
+        words = query.lower().split()
         text = text.lower()
-        return sum(text.count(term) for term in query_terms)
+        return sum(text.count(w) for w in words)
 
     scored = [
         {
@@ -25,22 +23,9 @@ def get_answers(question, chunks, selected_document, refine_query, semantic_mode
             "section": c.get("section", "Uncategorised"),
             "score": keyword_score(c["content"], question),
         }
-        for c in filtered_chunks
+        for c in filtered
     ]
 
-    # Select top N by keyword match
-    top_chunks = sorted(scored, key=lambda x: x["score"], reverse=True)[:20]
-
-    # Semantic reranking using transformer
-    if top_chunks:
-        question_embedding = model.encode(question, convert_to_tensor=True)
-        chunk_texts = [c["text"] for c in top_chunks]
-        chunk_embeddings = model.encode(chunk_texts, convert_to_tensor=True)
-        similarities = util.cos_sim(question_embedding, chunk_embeddings)[0]
-
-        for i, chunk in enumerate(top_chunks):
-            chunk["semantic_score"] = float(similarities[i])
-        
-        top_chunks.sort(key=lambda x: x["semantic_score"], reverse=True)
-
-    return top_chunks
+    # Step 3: Return top 20 by score
+    top = sorted(scored, key=lambda x: x["score"], reverse=True)[:20]
+    return top
